@@ -1,0 +1,16 @@
+# Generated tables -- pure functions of build_tables.py.  Regenerate with
+#   python build_tables.py
+# Out of the repo because they are derived data (1.1 MB of JSON) that would
+# churn the history on every change to the mode-selection rule.
+modes_full.json
+air_table.npz
+
+# Rendered audio
+*.wav
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store

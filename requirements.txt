@@ -1,0 +1,9 @@
+# Python 3.7 is the language floor (dataclasses); in practice 3.9+, since that
+# is what current numpy and scipy publish wheels for.
+#
+# No upper pin on numpy.  np.trapezoid exists only on numpy >= 2.0 and np.trapz
+# was removed in it, so either name would pin the major version -- the code uses
+# scipy.integrate.trapezoid instead and runs unchanged on 1.x and 2.x.  Verified
+# on numpy 1.26.4/scipy 1.11.4 and numpy 2.4.4/scipy 1.17.1: identical output.
+numpy>=1.22
+scipy>=1.8
