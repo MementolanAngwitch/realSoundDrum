@@ -23,7 +23,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from physicaldrum import Params, PRESETS, build, render          # noqa: E402
 
-GOLDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'golden_js.json')
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GOLDEN = os.path.join(ROOT, 'tests', 'golden_js.json')
 
 # The JS mode table is rounded to 4 dp to keep the page small, so frequencies
 # carry ~1e-5 relative error before anything else happens.  These tolerances are
@@ -32,7 +33,8 @@ RTOL_FREQ  = 2e-4        # mode frequencies
 RTOL_SCALAR = 5e-3       # gmax, bend, dent, drive
 ONSET_DB   = -55.0       # residual floor on the first 50 ms of audio
 ONSET_S    = 0.05
-BAND_DB    = 0.2         # third-octave agreement over the whole render
+BAND_DB    = 0.2         # band agreement, linear cases
+BAND_WIRED_DB = 1.0      # band agreement for a rattle (measured 0.21 dB)
 
 
 def _cases():
@@ -40,10 +42,45 @@ def _cases():
         return json.load(fh)
 
 
+def _params(name):
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    from extract_js_golden import CASES
+    preset, over = CASES[name]
+    return Params(**{**PRESETS[preset], **over})
+
+
+_CACHE = {}
+
+
 def _render(name):
-    d = build(Params(**PRESETS[name]))
-    y, r = render(d, impulse=PRESETS[name]['P'] * 1e-3)
-    return d, y, r
+    if name not in _CACHE:
+        p = _params(name)
+        d = build(p)
+        y, r = render(d, impulse=p.P * 1e-3)
+        _CACHE[name] = (d, y, r)
+    return _CACHE[name]
+
+
+def _wired(g):
+    return g['tFrozen'] < 1.4
+
+
+def bands_db(y):
+    """Energy per band per window -- the same numbers the harness computes."""
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    from extract_js_golden import WINDOWS, BANDS
+    out = []
+    for a, b in WINDOWS:
+        s = y[int(a * 44100): int(b * 44100)]
+        n = len(s)
+        X = np.abs(np.fft.rfft(s)) ** 2
+        k = np.arange(len(X))
+        row = []
+        for lo, hi in BANDS:
+            sel = (k >= math.ceil(lo * n / 44100)) & (k <= math.floor(hi * n / 44100))
+            row.append(10 * math.log10(X[sel].sum() + 1e-30))
+        out.append(row)
+    return np.array(out)
 
 
 def test_mode_frequencies():
@@ -86,16 +123,17 @@ def test_strike_response():
 
 
 def test_waveform_onset():
-    """The audio itself, over the first 50 ms.
+    """The audio itself, over the first 50 ms -- for the linear cases.
 
-    Compared here rather than over the whole render because the JS mode table is
-    rounded to 4 dp to keep the page small, which leaves ~1e-5 relative error in
-    every frequency.  Over 1.45 s that is up to a quarter cycle of accumulated
-    phase at 16 kHz -- a large sample-by-sample residual that says nothing about
-    whether the physics agrees.  Over 50 ms it is a few degrees, so this window
-    is a real test of the waveform.
+    Over 50 ms the 4 dp rounding of the JS mode table is a few degrees of phase,
+    so this is a real test of the waveform.  Not for a rattle: that is a
+    nonlinear, partly chaotic process, and two engines starting 1e-5 apart part
+    company within milliseconds, exactly as two real snares would.  The wired
+    case is held to test_band_energies and test_strands_settle_together.
     """
     for name, g in _cases().items():
+        if _wired(g):
+            continue
         _, y, _ = _render(name)
         js = np.array(g['y'])
         py = y[::7][:len(js)]
@@ -108,14 +146,11 @@ def test_waveform_onset():
 
 
 def test_spectrum():
-    """Third-octave magnitudes over the whole render.
-
-    This is the parity statement that survives the phase drift above: if the two
-    engines put the same energy in the same places for a second and a half, they
-    are the same engine.
-    """
+    """Third-octave magnitudes over the first 190 ms, decimated -- linear cases."""
     fs = 44100 / 7
     for name, g in _cases().items():
+        if _wired(g):
+            continue
         _, y, _ = _render(name)
         js = np.array(g['y'])
         py = y[::7][:len(js)]
@@ -136,19 +171,46 @@ def test_spectrum():
             lo *= 1.26
 
 
+def test_band_energies():
+    """Energy in four bands, in three windows, at the full sample rate.
+
+    For the linear cases this is tight.  For the rattle it is the parity
+    statement that survives chaos: two engines whose strands hit at different
+    instants must still put the same energy in the same places.
+    """
+    for name, g in _cases().items():
+        _, y, _ = _render(name)
+        d = np.abs(bands_db(y) - np.array(g['bands'])).max()
+        tol = BAND_WIRED_DB if _wired(g) else BAND_DB
+        assert d < tol, "%s: band energy differs by %.2f dB" % (name, d)
+
+
+def test_strands_settle_together():
+    """Both engines must decide the rattle is over at the same moment."""
+    for name, g in _cases().items():
+        _, _, r = _render(name)
+        got = r.get('t_frozen', 1.45)
+        assert abs(got - g['tFrozen']) <= 0.0101, \
+            "%s: strands settle at %.3f s here, %.3f s in JS" % (name, got, g['tFrozen'])
+
+
 if __name__ == '__main__':
-    for fn in (test_mode_frequencies, test_derived_quantities,
-               test_strike_response, test_waveform_onset, test_spectrum):
+    for fn in (test_mode_frequencies, test_derived_quantities, test_strike_response,
+               test_waveform_onset, test_spectrum, test_band_energies,
+               test_strands_settle_together):
         fn()
         print("ok  %s" % fn.__name__)
     # a readable summary too
     print()
-    print("%-13s %6s %9s %8s %8s   onset vs JS" % ("case", "modes", "f1", "gmax", "bend"))
+    print("%-16s %6s %9s %8s %8s %11s %10s %8s" % (
+        "case", "modes", "f1", "gmax", "bend", "onset", "bands", "settle"))
     for name, g in _cases().items():
         d, y, r = _render(name)
         js = np.array(g['y']); py = y[::7][:len(js)]
         k = int(ONSET_S * 44100 / 7)
         db = 20 * math.log10(np.sqrt(((py[:k] - js[:k]) ** 2).mean())
                              / np.sqrt((js[:k] ** 2).mean()))
-        print("%-13s %6d %9.2f %8.4f %8.1f   %7.1f dB"
-              % (name, d.n, d.f1, r['gmax'], r['bend'], db))
+        bd = np.abs(bands_db(y) - np.array(g['bands'])).max()
+        onset = "(rattle)" if _wired(g) else "%.1f dB" % db
+        print("%-16s %6d %9.2f %8.4f %8.1f %11s %7.2f dB %6.0f ms" % (
+            name, d.n, d.f1, r['gmax'], r['bend'], onset, bd, 1000 * r.get('t_frozen', 1.45)))

@@ -90,13 +90,22 @@ class Sheet:
         return jv(int(self.m[i]), self.j[i] * fr) * math.cos(self.m[i] * th)
 
 
-def make_sheet(a, T, h_mil, s0, eta, theta, tip, fmax, mat=0, airload=True):
+def make_sheet(a, T, h_mil, s0, eta, theta, tip, fmax, mat=0, airload=True, sides=1):
     """Select the modes this sheet has, and fill in everything per mode.
 
     `tip` is the striker radius in metres.  It belongs here, not only in the
     strike, because it decides which modes are audible: the acoustic prune below
     ranks on the amplitude a strike of that width actually produces.  Which
     modes matter genuinely depends on how you hit it.
+
+    `sides` is how many faces see open air, as a half-space each.  One for a
+    sheet over a sealed cavity -- the cavity side is then cavity.py's job.  Two
+    for a pattern that sees open air on both faces.  'open' for a sheet with
+    nothing behind it, which is two for m >= 1 but ONE for m = 0: air flows
+    round the rim of an unbaffled sheet, and for breathing motion that relief is
+    total -- Lamb's rigid disc carries 8 rho a^3/3 moving broadside in free air,
+    exactly the one-face baffled value.  Patterns with nodal diameters cancel
+    their own flow before it reaches the rim, and see both faces.
     """
     M = material(mat)
     h = h_mil * MIL
@@ -131,7 +140,8 @@ def make_sheet(a, T, h_mil, s0, eta, theta, tip, fmax, mat=0, airload=True):
     # --- air loading, self-consistent --------------------------------------
     from .air import loaded_density
     if airload:
-        se, omT2, omD2 = loaded_density(k_, idx, T, D, smu, a)
+        sd = np.where(m_ == 0, 1.0, 2.0) if sides == 'open' else float(sides)
+        se, omT2, omD2 = loaded_density(k_, idx, T, D, smu, a, sides=sd)
     else:
         se = np.full_like(k_, smu, dtype=float)
         omT2, omD2 = T * k_ ** 2 / se, D * k_ ** 4 / se

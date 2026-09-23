@@ -1,7 +1,8 @@
 """physicalDrumBeta — a clamped circular sheet, solved from physical properties.
 
     from physicaldrum import Params, build, render, PRESETS
-    d, _ = build(Params(**PRESETS['floor tom'])), None
+    d = build(Params(**PRESETS['snare']))
+    y, report = render(d, impulse=PRESETS['snare']['P'] * 1e-3)
 """
 from .materials import MATERIALS, material          # noqa: F401
 from .engine import Params, Drum, build, render     # noqa: F401

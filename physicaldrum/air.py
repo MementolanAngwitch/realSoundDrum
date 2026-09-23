@@ -38,9 +38,15 @@ partial ratios to Rossing's measured set:
     this model       1  1.468  1.917  2.356  2.787      3.7% max error
     measured         1  1.5    1.99   2.44   2.89
 
-Above j ~ 40, A -> p(r)/j — one air cell thick, which is exactly the
-infinite-plane rho_air/k limit.  The finite-disc integral only earns its cost on
-the low modes.
+Above j ~ 40, A -> 1/j — one air layer 1/k thick, which is exactly the
+infinite-plane rho_air/k limit, for EVERY angular order.  That limit is the
+second calibration and it is the one that caught a factor of two on m >= 1 (see
+added_mass_coeff).  The finite-disc integral only earns its cost on the low modes.
+
+(The timpani numbers above predate that fix.  The m >= 1 modes were carrying two
+faces' worth of air through one face, which happens to be roughly what a sealed
+kettle does -- one face in the room, one in the kettle.  The kettle is now its
+own term, see cavity.py, and the timpani check runs through the full build.)
 """
 import numpy as np
 from scipy.special import jv
@@ -68,8 +74,15 @@ def added_mass_coeff(m, j, r, n_quad=1400):
         JM[sel] = jv(int(mm), u[sel])
     f = (JM / (u * u - j[:, None] ** 2)) ** 2
     Q = trapezoid(f, s, axis=1)
-    eps = np.where(m == 0, 2.0, 1.0)
-    return 4 * j * j * Q / eps
+    # 2 j^2 Q for EVERY m.  This read 4 j^2 Q/eps_m until 2026-09-23, which is
+    # right for m = 0 (eps = 2) and exactly twice too heavy for every m >= 1.
+    # The angular factor eps_m appears once in the mode norm and once in the
+    # Hankel form of the added mass, and they cancel -- dividing by it again
+    # double-counted.  The piston calibration could not see it, because the
+    # piston is m = 0.  What does see it is the infinite-plane limit: A j -> 1
+    # (one air layer rho/k thick) for every m.  The old table gave 1.02 for
+    # m = 0 and 2.03 for m >= 1.  tests/test_physics.py now checks both.
+    return 2 * j * j * Q
 
 
 def loaded_density(k, idx, T, D, smu, a, sides=1, iters=14, relax=0.65):

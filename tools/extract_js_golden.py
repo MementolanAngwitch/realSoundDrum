@@ -11,14 +11,48 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML = os.path.join(ROOT, 'web', 'physicalDrumBeta.html')
 OUT  = os.path.join(ROOT, 'tests', 'golden_js.json')
 
-CASES = ['floor tom', 'timpano', 'steel sheet', 'snare', 'latex sheet']
+# name -> (preset, overrides).  The unwired snare holds the cavity physics to
+# the strict comparisons; the wired one is compared statistically, because a
+# rattle is a nonlinear, partly chaotic process and the two engines start
+# 1e-5 apart (the JS mode table is rounded to keep the page small).
+CASES = {
+    'floor tom':        ('floor tom', {}),
+    'timpano':          ('timpano', {}),
+    'steel sheet':      ('steel sheet', {}),
+    'snare, no wires':  ('snare', {'wN': 0}),
+    'latex sheet':      ('latex sheet', {}),
+    'snare':            ('snare', {}),
+}
+WINDOWS = [(0.0, 0.02), (0.02, 0.06), (0.06, 0.15)]
+BANDS = [(100, 500), (500, 2000), (2000, 6000), (6000, 16000)]
 
 HARNESS = r"""
-const cases = %s;
+const cases = %s, WINDOWS = %s, BANDS = %s;
+function bandsDb(y) {
+  // energy per band per window, by direct DFT on a coarse grid -- slow but
+  // dependency-free, and the same arithmetic the Python side does with an FFT
+  const out = [];
+  for (const [a, b] of WINDOWS) {
+    const i0 = Math.floor(a * SR), i1 = Math.floor(b * SR), n = i1 - i0, row = [];
+    for (const [lo, hi] of BANDS) {
+      let e = 0;
+      const k0 = Math.ceil(lo * n / SR), k1 = Math.floor(hi * n / SR);
+      for (let k = k0; k <= k1; k++) {
+        let re = 0, im = 0; const w = 2 * Math.PI * k / n;
+        for (let t = 0; t < n; t++) { const v = y[i0 + t]; re += v * Math.cos(w * t); im -= v * Math.sin(w * t); }
+        e += re * re + im * im;
+      }
+      row.push(10 * Math.log10(e + 1e-30));
+    }
+    out.push(row);
+  }
+  return out;
+}
 const out = {};
-for (const name of cases) {
-  const pr = PRESETS.find(q => q.n === name);
-  const p = Object.assign({}, KIT[2], pr.p);
+for (const name in cases) {
+  const [preset, over] = cases[name];
+  const pr = PRESETS.find(q => q.n === preset);
+  const p = Object.assign({}, KIT[2], pr.p, over);
   const d = buildDrum(p);
   const r = renderHit(d, p.P * 1e-3, 1.0);
   out[name] = {
@@ -28,6 +62,7 @@ for (const name of cases) {
     om: Array.from(d.om.slice(0, 12)),
     sig: Array.from(d.sig.slice(0, 12)),
     gmax: r.gmax, bend: r.bend, dent: r.dent, drive: r.drive,
+    tFrozen: r.tFrozen, bands: bandsDb(r.y),
     y: Array.from(r.y.filter((_, i) => i %% 7 === 0)).slice(0, 1200)
   };
 }
@@ -45,7 +80,7 @@ def js_source():
 
 
 if __name__ == '__main__':
-    src = js_source() + HARNESS % json.dumps(CASES)
+    src = js_source() + HARNESS % (json.dumps(CASES), json.dumps(WINDOWS), json.dumps(BANDS))
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as fh:
         fh.write(src)
         path = fh.name
