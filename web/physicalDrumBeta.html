@@ -86,6 +86,9 @@ table.seq td{padding:0}
   font-size:9.5px;color:#3E4550}
 .ruler span.q{color:var(--silk2)}
 
+.slotbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:8px}
+.slotbar button{padding:7px 12px;font-size:11px}
+.slotcount{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--dim);margin-left:4px}
 .hint{margin-top:14px;font-size:12px;color:var(--dim);line-height:1.55;max-width:62ch}
 .hint b{color:var(--silk2);font-weight:500}
 kbd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;background:#22262E;border:1px solid var(--edge);
@@ -149,7 +152,7 @@ kbd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;background:#22262E;bo
   <header>
     <div class="brand">
       <h1>physicalDrumBeta</h1>
-      <div class="sub">six unnamed sheets — give each one <b>a material, a size, a tension and something to hit it with</b></div>
+      <div class="sub">unnamed sheets — give each one <b>a material, a size, a tension and something to hit it with</b></div>
     </div>
     <div class="tempo">
       <span class="lab">Tempo</span>
@@ -171,9 +174,14 @@ kbd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;background:#22262E;bo
         <div class="ruler" id="ruler"></div>
         <table class="seq"><tbody id="rows"></tbody></table>
       </div>
+      <div class="slotbar">
+        <button id="ins" title="Insert a copy of the selected slot below it">+ Insert slot</button>
+        <button id="del" title="Delete the selected slot">Delete slot</button>
+        <span class="slotcount" id="slotcount"></span>
+      </div>
       <p class="hint">
         Click a step to switch it on, click again for an <b>accent</b> (a harder strike — which on a real
-        head is not just louder, it also bends the pitch up). Click a slot name to load it on the right; rename it in the panel header. Keys <kbd>1</kbd>–<kbd>6</kbd> trigger voices, <kbd>space</kbd> starts and stops.
+        head is not just louder, it also bends the pitch up). Click a slot name to load it on the right; rename it in the panel header. <b>Insert slot</b> adds a copy of the selected slot below it; <b>Delete slot</b> removes it. Keys <kbd>1</kbd>–<kbd>9</kbd> trigger the first nine slots, <kbd>space</kbd> starts and stops.
       </p>
     </div>
 
@@ -186,9 +194,7 @@ kbd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;background:#22262E;bo
       <div class="group">
         <span class="lab">Start from</span>
         <select id="preset"><option value="-1">—</option></select>
-        <p class="rnote" style="margin-top:7px">Nothing here is a drum. It is a clamped
-        circular sheet with properties you choose, optionally with a second sheet and sealed
-        air behind it, struck by a striker you choose. These are places to start.</p>
+        
       </div>
 
       <div class="group">
@@ -276,71 +282,7 @@ kbd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;background:#22262E;bo
 </div>
 
 
-<details id="about">
-  <summary>What this actually is</summary>
-  <div class="ab">
-    <p>A clamped circular sheet, given physical properties, hit by a striker with physical
-    properties of its own. Every sound is solved from the numbers in the panel. Nothing is a
-    sample. The primitive is deliberately unnamed — fitting it to a particular instrument is a
-    separate job, done afterwards, against a model that doesn't already assume the answer.</p>
 
-    <h4>The chain</h4>
-    <p><b>Frequency.</b> <code>ω² = (T k² + D k⁴)/σ_eff</code>, with <code>D = E h³/12(1−ν²)</code>.
-    The <code>k⁴</code> term is bending stiffness and it is not a correction: on a 10 mil Mylar
-    head it is already half the restoring force by <code>j = 120</code>, and 98% on a steel
-    foil. A model with only <code>T k²</code> can only ever be a drum. The two terms are kept
-    apart because tension modulation scales only the first.</p>
-    <p><b>Air.</b> The sheet drags a layer of air with it, weighted toward the <i>low</i> modes,
-    which drags the Bessel ratios 1 : 1.34 : 1.67 : 1.98 toward harmonic. That pull is why a
-    drum reads as pitched at all. Calibrated twice: on the rigid piston, and on the
-    infinite-plane limit, one air layer <code>1/k</code> thick for every angular order.</p>
-    <p><b>The cavity</b> has its own modes, <code>J_m(χr/a) cos mθ cos(sπx/L)</code>, and a sheet
-    mode couples to the cavity modes of the same <code>m</code> through a closed-form overlap.
-    Low cavity modes are degrees of freedom of their own; the rest become added mass, summed
-    over every axial order exactly. Broad patterns of the struck sheet cross the cavity and
-    drive the second sheet at every angular order; fine ones die out within the depth. Through
-    a full kettle this lands on measured timpani partial ratios to 4.1%, against 21% for an
-    ideal membrane, with nothing fitted.</p>
-    <p><b>Snare wires.</b> Each strand is a steel string lying across the second sheet, held
-    against it where it bends over the snare beds and resting on it everywhere else. Contact is
-    solved every sample as a constraint across all points at once: a strand can push on the
-    sheet but never pull. When the sheet pulls away faster than a strand's tension can follow,
-    the strand is left behind and comes back to hit it — that is the rattle.</p>
-    <p><b>The strike.</b> Contact time is not a knob: the dent spreads at the sheet's wave
-    speed, so <code>τ = 2w/c</code>, floored by the striker's own softness. Tip radius is the
-    single biggest control on brightness.</p>
-    <p><b>Damping</b> is a constant loss factor, <code>σ = σ₀ + η ω/2</code> — a polymer loses a
-    fixed fraction of the strain energy per cycle, not a fixed amount per second.</p>
-    <p><b>Radiation</b> is the Rayleigh far field of a baffled disc, which for a clamped mode
-    has a closed form. On axis you hear only the breathing modes; off axis the petal modes stop
-    cancelling. Where the sheet's phase speed reaches the speed of sound the expression is 0/0
-    and its limit is large — a real radiation peak, and why a cymbal is loud and a drumhead is
-    not.</p>
-
-    <h4>Where it stops being honest</h4>
-    <p>The mode <i>shapes</i> are the membrane ones, so a stiffness-dominated sheet is
-    approximated — watch <b>Stiffness at top</b>. The stretch integral only converges once the
-    band resolves the striker tip, so the tip is floored at what the retained modes can see.
-    <b>Model range</b> tells you when the pitch bend hit its clamp, past which small-strain
-    theory is no longer telling the truth. <b>Limiter drive</b> is the recording chain, not the
-    sheet. Shell flexure, the room and lug asymmetry are not modelled, and the cavity is a rigid
-    cylinder.</p>
-    <p>The wires are the newest part and the least settled. Their rattle is honest — the
-    contact can only lose energy, and that is tested — but at the preset strikes it is short,
-    tens of milliseconds; it lengthens with a harder hit, and a hit hard enough to sound like
-    a real snare pushes the pitch bend past its range. That disagreement is real and not yet
-    resolved.</p>
-  </div>
-</details>
-
-<div id="veil"><div class="box">
-  <h2>physicalDrumBeta</h2>
-  <p>Six clamped circular sheets. Give one a material, a radius, a tension, a thickness, air
-     behind it and something to strike it with, and listen to what that is. Some of the
-     settings are drums. Nothing here is a recording.</p>
-  <button id="start">Build the kit</button>
-  <div id="bar"><i></i></div>
-</div></div>
 
 <script>
 const MODES={M:[0,1,2,0,3,1,4,2,0,5,3,6,1,4,7,2,0,8,5,3,1,9,6,4,10,2,7,0,11,5,8,3,1,12,6,9,4,13,2,0,7,10,14,5,3,8,1,11,15,6,12,9,4,16,2,0,7,13,10,17,5,3,1,8,14,18,11,6,4,9,15,2,19,0,12,7,16,20,5,10,13,3,1,8,21,17,11,6,14,4,2,0,22,9,18,12,15,7,5,23,19,10,3,1,13,16,8,24,20,6,11,4,17,14,2,0,25,9,21,7,12,18,15,5,26,3,1,22,10,13,8,19,27,16,6,23,11,4,2,0,28,20,14,9,17,24,7,12,5,29,21,3,15,1,18,10,25,8,30,13,22,6,16,19,26,4,11,2,0,31,9,14,23,17,20,27,7,12,5,32,3,1,24,15,10,28,21,18,8,33,13,6,25,4,16,29,2,0,11,22,19,34,9,14,26,7,30,17,5,23,35,20,12,3,1,10,27,15,31,36,8,18,24,21,6,13,4,2,28,0,32,16,11,37,25,19,22,9,14,7,29,33,5,38,17,3,12,1,26,20,23,10,15,30,34,39,8,18,6,27,13,4,21,24,2,0,35,31,11,40,16,9,19,28,7,14,22,25,5,36,41,32,3,1,12,17,29,20,10,26,23,15,42,37,8,33,6,18,4,13,2,0,30,21,43,27,11,38,24,34,16,9,7,19,31,14,5,44,39,22,3,28,1,35,25,12,17,10,32,20,45,8,40,15,23,29,36,6,26,4,13,2,0,18,46,33,11,41,21,37,16,30,24,9,27,7,14,19,5,47,34,3,42,1,22,38,12,31,25,17,28,10,48,8,20,35,43,15,6,39,4,23,32,2,0,13,26,29,18,49,11,44,36,21,9,16,40,33,7,24,27,30,50,5,14,3,19,1,45,37,12,41,22,17,10,34,25,51,31,28,8,46,15,6,20,38,4,2,42,0,13,23,52,35,18,26,11,32,29,47,9,39,16,21,43,7,53,5,24,36,3,14,1,19,27,48,33,30,12,40,44,22,10,17,54,8,37,25,49,6,15,34,28,4,20,31,2,0,41,45,13,55,23,18,11,38,50,26,9,35,29,16,32,42,7,21,46,56,5,3,1,14,24,39,51,19,12,27,36,43,30,33,47,57,10,17,22,8,6,52,40,15,25,4,2,0,20,28,37,58,44,13,48,31,34,11,23,18,53,9,41,26,7,16,59,21,5,45,38,49,29,3,1,35,32,14,54,24,19,12,42,60,27,10,50,46,17,39,8,30,22,36,33,6,55,4,15,2,0,25,43,20,61,13,51,47,28,40,11,31,18,37,23,34,56,9,7,44,62,16,26,5,3,21,52,1,48,14,29,32,35,12,19,24,10,27,17,8,22,6,30,4,2,15,0,33,36,25,20,13,11,28,18,9,23,31,7,34,16,37,5,3,1,26,21,14,29,12,19,24,32,10,35,38,8,17,27,6,22,4,2,0,15,30,13,20,33,25,36,11,18,9,28,23,7,5,31,16,3,1,34,21,26,14,37,12,29,19,10,24,32,8,17,6,35,4,38,2,27,0,22,15,30,13,20,25,11,33,36,9,18,39,7,28,23,5,3,16,1,31,14,21,26,34,12,37,40,19,10,29,24,8,17,6,32,4,2,0,22,27,35,15,38,41,13,20,30,11,25,9,33,18,7,5,36,28,23,3,1,16,39,14,31,21,26,12,34,19,10,37,8,29,40,24,6,17,4,2,0,32,15,22,27,35,13,38,20,11,41,30,25,9,18,7,33,5,3,1,23,16,28,36,39,14,42,21,31,12,26,10,19,34,8,6,24,29,37,17,4,2,0,40,43,15,22,32,27,13,35,20,11,9,38,30,25,7,18,41,44,5,3,1,33,16,23,28,14,36,21,12,39,31,26,42,10,19,8,34,6,4,24,17,2,0,29,37,15,40,22,32,43,13,27,11,20,35,9,25,7,30,18,5,38,3,1,41,16,23,44,33,28,14,21,36,12,10,26,31,39,19,8,42,6,4,45,2,0,17,34,24,29,15,37,22,13,32,40,27,11,20,43,9,46,7,35,25,18,5,30,3,1,38,16,23,41,33,14,28,44,47,12,21,36,10,26,8,31,19,6,39,4,2,0,17,24,42,34,29,45,15,22,13,37,11,27,32,20,40,9,7,43,5,18,25,3,35,1,46,30,16,38,23,14,28,33,41,12,21,10,44,47,8,36,26,19,6,31,4,2,0,17,39,24,15,34,29,42,22,13,45,48,11,37,27,20,32,9,7,40,5,3,18,1,25,43,35,30,16,46,23,49,14,38,28,12,33,21,10,41,8,19,6,26,44,36,4,2,0,31,47,17,50,24,39,15,29,34,13,42,22,11,45,9,27,37,20,48,32,7,5,3,1,18,40,25,16,35,30,43,23,14,46,12,38,49,28,21,33,10,8,41,6,19,4,26,2,0,36,31,44,17,24,47,15,50,39,29,13,34,22,11,42,9,20,27,7,37,45,5,32,3,1,18,48,25,51,40,16,30,35,14,23,43,12,28,21,46,10,38,33,8,49,6,19,52,4,2,0,26,41,17,31,36,44,24,15,47,13,39,29,22,34,50,11,53,9,20,42,7,27,5,3,1,37,32,18,45,25,16,48,40,30,51,14,35,23,12,43,10,21,28,8,38,33,6,46,4,19,2,0,26,49,17,41,52,31,36,15,24,44,13,29,22,11,39,47,34,9,7,20,50,5,27,3,53,1,42,18,32,37,25,16,45,14,30,48,40,23,35,12,51,10,21,54,28,8,43,6,4,33,38,2,0,19,46,26,17,49,41,31,15,24,36,52,13,55,44,11,22,29,9,39,34,7,47,20,5,3,1,27,50,18,42,32,53,37,25,16,56,45,14,30,23,12,40,35,48,10,21,8,28,51,6,4,43,2,0,19,54,33,38,26,17,46,15,31,24,41,49,36,13,11,52,22,29,9,44,55,7,34,39,5,20,3,1,27,47,18,32,42,50,16,25,37,53,14,56,23,45,12,30,10,35,40,8,21,48,6,28,4,2,0,19,51,43,33,38,26,17,54,57,15,46,31,24,13,41,36,11,49,22,9,29,7,52,5,44,20,3,34,1,39,55,27,58,18,47,16,32,25,42,37,50,14,12,23,30,53,10,45,8,56,35,21,40,6,59,4,2,28,0,48,19,33,43,17,26,51,38,15,54,24,31,13,46,57,11,36,41,22,9,49,29,7,5,3,20,1,34,44,52,39,27,18,55,16,47,58,32,25,14,42,37,12,50,23,30,10,8,21,53,45,6,35,4,40,2,0,28,56,19,59,48,17,33,26,43,38,15,51,24,13,31,54,11,46,36,9,22,41,57,7,29,5,3,60,1,20,49,34,18,27,44,39,52,16,25,32,55,14,47,37,12,58,42,23,10,61,30,8,50,6,21,4,2,0,35,45,40,28,53,19,56,17,33,26,48,59,15,38,43,62,13,24,51,31,11,9,22,46,36,7,54,41,5,29,3,1,20,57,49,34,18,60,27,44,39,16,52,25,14,32,12,47,55,37,23,10,42,8,30,58,6,21,4,2,0,50,61,35,28,19,45,40,53,17,26,33,15,56,48,38,13,43,24,59,11,31,62,9,51,22,7,5,36,3,46,1,29,41,20,54,18,34,27,57,49,16,39,44,60,25,14,63,32,52,12,10,23,37,47,8,42,55,30,6,4,21,2,0,58,35,50,19,28,61,40,45,17,64,26,53,33,15,13,48,38,24,56,43,11,31,9,7,22,59,5,51,3,1,36,62,29,20,46,41,65,54,18,27,34,16,49,57,39,14,44,25,32,12,60,10,52,23,63,8,37,6,66,47,30,4,42,2,21,0,55,19,35,28,58,50,17,40,45,26,61,15,33,53,13,64,24,11,38,48,9,43,31,56,7,22,5,3,1,36,59,20,29,51,41,46,62,18,27,65,34,54,16,14,39,49,25,44,57,12,32,10,23,8,60,6,52,37,4,2,30,0,21,47,63,42,66,19,55,28,35,17,50,40,58,45,15,26,33,13,61,24,11,53,38,9,64,31,7,48,43,22,5,67,3,1,56,20,36,29,51,59,18,41,46,27,16,34,62,14,54,25,65,39,12,49,68,44,32,10,23,57,8,6,4,2,0,37,21,30,52,60,42,47,19,63,28,35,17,55,66,15,40,26,69,50,45,13,33,58,11,24,9,38,61,7,53,31,5,22,3,1,43,48,64,20,29,56,36,67,18,41,51,27,46,16,59,34,14,25,12,62,54,39,10,32,49,44,8,23,65,6,4,2,0,68,57,21,37,30,52,19,42,60,47,28,17,35,63,15,55,26,40,13,66,50,33,45,11,24,69,9,58,7,5,38,31,3,22,1,53,61,43,48,20,29,36,64,18,56,67,16,41,27,51,46,34,70,14,59,25,12,10,39,32,54,8,62,23,6,44,49,4,2,0,21,65,30,37,57,68,19,42,52,71,28,47,17,60,35,15,26,13,40,55,63,33,11,45,50,24,9,66,7,5,3,58,1,22,38,31,69,72,53,20,43,48,61,29,36,18,16,64,27,56,41,14,34,51,46,67,12,25,10,59,70,8,39,32,23,6,4,2,0,54,44,62,49,21,30,37,19,65,57,42,28,17,52,68,47,35,15,71,60,26,13,40,11,33,55,24,9,63,45,7,50,5,3,1,22,31,38,66,58,20,43,69,53,29,48,18,36,72,61,16,27,14,41,56,34,64,12,46,25,51,10,8,67,6,23,39,32,59,4,2,0,70,44,21,54,49,73,30,62,37,19,17,28,57,42,65,15,35,47,52,26,13,68,11,60,40,33,9,71,24,7,5,55,74,45,3,1,50,22,63,31,38,20,66,58,43,29,18,53,48,36,69,16,27,61,14,72,41,12,34,75,25,56,10,46,51,64,8,6,23,4,32,2,0,39,67,59,21,44,30,54,49,70,19,37,62,73,17,28,42,15,35,57,65,13,47,26,52,11,9,40,33,24,68,7,60,5,3,1,45,22,71,55,50,31,38,74,63,20,29,18,43,58,66,36,16,48,53,27,14,69,12,41,61,34,25,10,72,8,46,56,6,51,4,23,2,75,0,32,64,39,21,59,44,30,67,19,54,37,49,17,70,28,62,15,42,35,73,13,26,57,47,11,76,52,65,9,24,7,33,40,5,3,1,22,60,68,45,31,55,50,20,38,71,63,18,29,74,43,16,36,58,77,48,27,14,53,66,12,34,41,10,25,8,69,61,6,4,46,2,0,23,56,51,32,72,39,21,64,75,30,19,44,78,59,37,17,67,49,54,28,15,42,13,70,35,62,26,11,47,9,57,73,52,7,24,5,33,3,40,1,65,76,22,45,31,60,20,68,38,50,55,18,29,71,16,63,43,36,14,27,74,58,48,12,53,77,10,66,25,34,41,8,6,4,2],
@@ -1263,9 +1205,12 @@ let ac=null, master=null;
 const cache=new Map();
 const VELS=[0.62,1.0];
 function keyOf(vi,li){
-  // the name is a label, not physics -- renaming must not force a re-render
+  // The name is a label, not physics -- renaming must not force a re-render.
+  // Nor is the slot's position: a sound is a function of its physics alone, so
+  // inserting or deleting a slot can never leave another one playing a stale
+  // render, and two slots with the same settings share one.
   const {name,...phys}=KIT[vi];
-  return vi+'|'+li+'|'+JSON.stringify(phys);
+  return li+'|'+JSON.stringify(phys);
 }
 function bake(vi,li){
   const k=keyOf(vi,li); if(cache.has(k)) return cache.get(k);
@@ -1273,6 +1218,33 @@ function bake(vi,li){
   const buf=ac.createBuffer(1,r.y.length,SR); buf.copyToChannel(r.y,0);
   const rec={buf,gmax:r.gmax,bend:r.bend,clipped:r.clipped,dent:r.dent,n:d.n,f1:d.f1,t60:d.t60,drive:r.drive,clipped:r.clipped};
   cache.set(k,rec); return rec;
+}
+/* Sound starts on the first press -- a pad, a step, a key or Play -- because a
+   browser only lets audio begin from a gesture.  Whatever has not been
+   rendered yet is then rendered in the background, one strike per tick, so the
+   page stays usable while it fills in.  (A slot with snare wires takes ~1.5 s
+   to render; the others well under a second.)                              */
+let warmTimer=null;
+function ensureAudio(){
+  if(ac) return true;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return false;
+  ac=new AC({sampleRate:SR});
+  master=ac.createGain();
+  master.gain.value=(+document.getElementById('vol').value/100)*0.9;
+  master.connect(ac.destination);
+  if(ac.state!=='running') ac.resume();
+  warm();
+  return true;
+}
+function warm(){
+  clearTimeout(warmTimer);
+  const next=()=>{
+    if(!ac) return;
+    for(let v=0;v<KIT.length;v++) for(let l=1;l>=0;l--)
+      if(!cache.has(keyOf(v,l))){ bake(v,l); warmTimer=setTimeout(next,40); return; }
+  };
+  warmTimer=setTimeout(next,80);
 }
 function trigger(vi,li,when){
   const rec=bake(vi,li);
@@ -1322,23 +1294,60 @@ for(let s=0;s<STEPS;s++){
   sp.textContent=(s%4===0)?(s/4+1):'·'; if(s%4===0) sp.className='q';
   rulerEl.appendChild(sp);
 }
-KIT.forEach((p,vi)=>{
-  const tr=document.createElement('tr');
-  const td1=document.createElement('td'); td1.className='padcell';
-  const pad=document.createElement('button'); pad.className='pad'+(vi===selected?' sel':'');
-  pad.innerHTML='<span class="dot"></span><span class="nm">'+p.name+'</span><span class="hz" id="hz'+vi+'">—</span>';
-  pad.onclick=()=>{ selected=vi; syncPads(); loadPanel(); if(ac) flash(vi), trigger(vi,1); };
-  td1.appendChild(pad); tr.appendChild(td1);
-  const td2=document.createElement('td');
-  const wrap=document.createElement('div'); wrap.className='steps';
-  for(let s=0;s<STEPS;s++){
-    const b=document.createElement('button'); b.className='step'; b.dataset.v=vi; b.dataset.s=s;
-    b.setAttribute('aria-label',p.name+' step '+(s+1));
-    b.onclick=()=>{ pattern[vi][s]=(pattern[vi][s]+1)%3; paint(); saveBench(); if(ac&&pattern[vi][s]) trigger(vi,pattern[vi][s]===2?1:0); };
-    wrap.appendChild(b);
-  }
-  td2.appendChild(wrap); tr.appendChild(td2); rowsEl.appendChild(tr);
-});
+/* The rows are rebuilt from KIT whenever slots are inserted or deleted: each
+   pad and step button remembers its slot number, so after a change every row
+   below it needs new ones.                                                  */
+function renderRows(){
+  rowsEl.textContent='';
+  KIT.forEach((p,vi)=>{
+    const tr=document.createElement('tr');
+    const td1=document.createElement('td'); td1.className='padcell';
+    const pad=document.createElement('button'); pad.className='pad'+(vi===selected?' sel':'');
+    pad.innerHTML='<span class="dot"></span><span class="nm"></span><span class="hz" id="hz'+vi+'">\u2014</span>';
+    pad.querySelector('.nm').textContent=p.name;
+    pad.onclick=()=>{ selected=vi; syncPads(); loadPanel(); if(ensureAudio()){ flash(vi); trigger(vi,1); } };
+    td1.appendChild(pad); tr.appendChild(td1);
+    const td2=document.createElement('td');
+    const wrap=document.createElement('div'); wrap.className='steps';
+    for(let s=0;s<STEPS;s++){
+      const b=document.createElement('button'); b.className='step'; b.dataset.v=vi; b.dataset.s=s;
+      b.setAttribute('aria-label',p.name+' step '+(s+1));
+      b.onclick=()=>{ pattern[vi][s]=(pattern[vi][s]+1)%3; paint(); saveBench();
+        if(pattern[vi][s] && ensureAudio()) trigger(vi,pattern[vi][s]===2?1:0); };
+      wrap.appendChild(b);
+    }
+    td2.appendChild(wrap); tr.appendChild(td2); rowsEl.appendChild(tr);
+  });
+  paint(); paintAllHz(); syncSlotBar();
+}
+
+/* ---- inserting and deleting slots.  Insert puts a copy of the selected slot
+   directly below it, with an empty pattern; Delete removes the selected one.  */
+const MAX_SLOTS=16;
+function nextName(){
+  const used=new Set(KIT.map(k=>k.name));
+  for(let c=65;c<91;c++){ const n=String.fromCharCode(c); if(!used.has(n)) return n; }
+  for(let i=KIT.length+1;;i++) if(!used.has('S'+i)) return 'S'+i;
+}
+function insertSlot(){
+  if(KIT.length>=MAX_SLOTS) return;
+  const at=selected+1;
+  KIT.splice(at,0,Object.assign({},KIT[selected],{name:nextName()}));
+  pattern.splice(at,0,new Array(STEPS).fill(0));
+  selected=at;
+  renderRows(); loadPanel(); saveBench();
+}
+function deleteSlot(){
+  if(KIT.length<=1) return;
+  KIT.splice(selected,1); pattern.splice(selected,1);
+  if(selected>=KIT.length) selected=KIT.length-1;
+  renderRows(); loadPanel(); saveBench();
+}
+function syncSlotBar(){
+  document.getElementById('ins').disabled = KIT.length>=MAX_SLOTS;
+  document.getElementById('del').disabled = KIT.length<=1;
+  document.getElementById('slotcount').textContent = KIT.length+' of '+MAX_SLOTS+' slots';
+}
 function paintNames(){
   document.querySelectorAll('.pad').forEach((p,i)=>{
     const e=p.querySelector('.nm'); if(e) e.textContent=KIT[i].name;
@@ -1406,7 +1415,14 @@ function loadBench(){
   try{
     const raw=localStorage.getItem(SAVE_KEY); if(!raw) return;
     const s=JSON.parse(raw);
-    if(!s||!Array.isArray(s.kit)||s.kit.length!==KIT.length) return;
+    if(!s||!Array.isArray(s.kit)||!s.kit.length) return;
+    // however many slots were saved: grow from copies of the last slot (so every
+    // setting has a key to restore into), or trim
+    const n=Math.min(s.kit.length,MAX_SLOTS);
+    while(KIT.length<n) KIT.push(Object.assign({},KIT[KIT.length-1]));
+    KIT.length=n;
+    while(pattern.length<n) pattern.push(new Array(STEPS).fill(0));
+    pattern.length=n;
     for(let i=0;i<KIT.length;i++){
       const src=s.kit[i]; if(!src||typeof src!=='object') continue;
       for(const k in KIT[i]) if(k in src && typeof src[k]===typeof KIT[i][k]) KIT[i][k]=src[k];
@@ -1414,8 +1430,8 @@ function loadBench(){
       // placeholder count of 20 on every slot: honour the flag, not the count
       if('wire' in src) KIT[i].wN = src.wire ? (src.wN|0||20) : 0;
     }
-    if(Array.isArray(s.pat)&&s.pat.length===pattern.length)
-      for(let v=0;v<pattern.length;v++)
+    if(Array.isArray(s.pat))
+      for(let v=0;v<Math.min(pattern.length,s.pat.length);v++)
         if(Array.isArray(s.pat[v])&&s.pat[v].length===STEPS)
           for(let q=0;q<STEPS;q++) pattern[v][q]=+s.pat[v][q]||0;
   }catch(e){}
@@ -1576,35 +1592,23 @@ document.getElementById('reset').onclick=()=>{
   try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
   location.reload();
 };
-document.getElementById('play').onclick=()=>{ if(!ac) return; playing?stop():start(); };
+document.getElementById('play').onclick=()=>{ if(!ensureAudio()) return; playing?stop():start(); };
+document.getElementById('ins').onclick=insertSlot;
+document.getElementById('del').onclick=deleteSlot;
 document.getElementById('clear').onclick=()=>{ pattern=KIT.map(()=>new Array(STEPS).fill(0)); paint(); saveBench(); };
 bpmEl.oninput=()=>bpmv.textContent=bpmEl.value+' BPM';
 document.getElementById('vol').oninput=e=>{ if(master) master.gain.value=(+e.target.value/100)*0.9; };
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
-  if(e.code==='Space'){ e.preventDefault(); if(ac) playing?stop():start(); }
-  const i='123456'.indexOf(e.key);
-  if(i>=0 && ac){ selected=i; syncPads(); loadPanel(); flash(i); trigger(i,1); }
+  if(e.code==='Space'){ e.preventDefault(); if(ensureAudio()) playing?stop():start(); }
+  const i='123456789'.indexOf(e.key);
+  if(i>=0 && i<KIT.length){ selected=i; syncPads(); loadPanel();
+    if(ensureAudio()){ flash(i); trigger(i,1); } }
 });
 
-document.getElementById('start').onclick=async ()=>{
-  ac=new (window.AudioContext||window.webkitAudioContext)({sampleRate:SR});
-  await ac.resume();
-  master=ac.createGain(); master.gain.value=0.63; master.connect(ac.destination);
-  const bar=document.getElementById('bar'), fill=bar.firstElementChild;
-  bar.style.display='block';
-  document.getElementById('start').disabled=true;
-  const jobs=[]; for(let v=0;v<KIT.length;v++) for(let l=0;l<2;l++) jobs.push([v,l]);
-  let done=0;
-  for(const [v,l] of jobs){
-    await new Promise(r=>setTimeout(r,0));
-    bake(v,l); done++; fill.style.width=(100*done/jobs.length)+'%';
-  }
-  document.getElementById('veil').style.display='none';
-  loadPanel();
-};
-
-loadBench(); paint(); paintNames(); loadPanel(); paintAllHz(); bpmv.textContent=bpmEl.value+' BPM';
+loadBench();
+if(selected>=KIT.length) selected=KIT.length-1;
+renderRows(); loadPanel(); bpmv.textContent=bpmEl.value+' BPM';
 </script>
 
 </body>
